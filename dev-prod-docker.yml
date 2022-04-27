@@ -62,7 +62,7 @@
       url: http://192.168.31.216:8081/repository/maven-custom-release/com/boxfuse/samples/hello/1.0/hello-1.0.war
       dest: /home/pcadm
       username: user1
-      password: ZZuper123
+      password: '{{ mysecret }}'
     delegate_to: prodserver1 
 
   - name: Start prod container
