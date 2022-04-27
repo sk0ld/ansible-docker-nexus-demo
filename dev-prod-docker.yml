@@ -1,0 +1,77 @@
+---
+- name: install docker
+  hosts: dev,prod
+  become: yes
+
+  tasks:
+   - name: install packages
+     apt:
+       name:
+        - docker.io
+        - python3-docker
+       state: present
+       update_cache: yes
+
+
+- name: build app
+  hosts: dev
+  become: yes
+
+  tasks:
+    - name: copy Dockerfile
+      copy:
+        src: ./dev/Dockerfile
+        dest: /home/pcadm/Dockerfile
+
+    - name: Build dev image
+      docker_image:
+        build:
+          path: /home/pcadm/
+        name: dev-mvn-alpine  
+        source: build
+      delegate_to: devserver1  
+
+    - name: Start dev container
+      docker_container:
+       name: dev-instance
+       image: dev-mvn-alpine
+       state: started
+       recreate: yes
+      delegate_to: devserver1  
+
+- name: build prod app
+  hosts: prod
+  become: yes
+
+  tasks:
+  - name: copy Dockerfile
+    copy:
+      src: ./prod/Dockerfile
+      dest: /home/pcadm/Dockerfile
+   
+  - name: Build prod image
+    docker_image:
+        build:
+          path: /home/pcadm/
+        name: prod-tomcat-alpine  
+        source: build
+    delegate_to: prodserver1  
+
+  - name: Get prod artifact
+    get_url:
+      url: http://192.168.31.216:8081/repository/maven-custom-release/com/boxfuse/samples/hello/1.0/hello-1.0.war
+      dest: /home/pcadm
+      username: user1
+      password: ZZuper123
+    delegate_to: prodserver1 
+
+  - name: Start prod container
+    docker_container:
+      name: prod-instance
+      image: prod-tomcat-alpine
+      state: started 
+      recreate: yes   
+      ports:
+       - "8080:8080"
+      command: ["catalina.sh", "run"]
+    delegate_to: prodserver1   
